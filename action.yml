@@ -1,0 +1,39 @@
+name: PR Size Checker
+description: 检查PR变更大小，防止巨型PR合并
+author: wyslsz
+branding:
+  icon: git-pull-request
+  color: blue
+inputs:
+  max_files:
+    description: 最大文件变更数
+    default: "50"
+  max_lines:
+    description: 最大行变更数
+    default: "500"
+  warn_files:
+    description: 警告阈值（文件数）
+    default: "20"
+  warn_lines:
+    description: 警告阈值（行数）
+    default: "200"
+runs:
+  using: composite
+  steps:
+    - run: |
+        FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+        LINES=$(git diff --shortstat origin/${{ github.base_ref }}...HEAD | awk "{print \$4+\$6}")
+        echo "📊 Files: $FILES | Lines: $LINES"
+        if [ "$FILES" -gt "${{ inputs.max_files }}" ]; then
+          echo "::error::❌ PR 包含 $FILES 个文件变更（上限 ${{ inputs.max_files }}）"
+          exit 1
+        fi
+        if [ "$LINES" -gt "${{ inputs.max_lines }}" ]; then
+          echo "::error::❌ PR 包含 $LINES 行变更（上限 ${{ inputs.max_lines }}）"
+          exit 1
+        fi
+        if [ "$FILES" -gt "${{ inputs.warn_files }}" ]; then
+          echo "::warning::⚠️ PR 较大（$FILES 个文件），建议拆分"
+        fi
+        echo "✅ PR 大小检查通过"
+      shell: bash
